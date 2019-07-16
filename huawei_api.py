@@ -26,12 +26,7 @@ class HuaweiAPI:
     HOME_URL = "http://{host}/html/home.html"
     API_URL = "http://{host}/api/"
 
-    def __init__(self, passwd, host="192.168.8.1", user="admin", logfile=None):
-        if logfile:
-            logging.basicConfig(filename=logfile)
-        stderrLogger = logging.StreamHandler()
-        stderrLogger.setFormatter(logging.Formatter(logging.BASIC_FORMAT))
-        logging.getLogger().addHandler(stderrLogger)
+    def __init__(self, passwd, host="192.168.8.1", user="admin"):
         self.log = logging.getLogger("huawei-api")
         self.api_url = self.API_URL.format(host=host)
         self.session = requests.Session()
