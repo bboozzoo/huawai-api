@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 
 import argparse
 import logging
@@ -29,15 +29,21 @@ def parse_arguments():
 
 
 def main(args):
-    api = HuaweiAPI(host=args.ip, user=args.user, passwd=args.password)
+    api = HuaweiAPI(host=args.ip)
+    api.ping()
+    time.sleep(1)
+    api.login(args.user, args.password)
+    band = api.net_mode_list()
+    logging.info('band: %s', band)
     while True:
         signal = api.device_signal()
         if signal["band"]:
-            logging.info("Current Band: B" + signal["band"])
-            logging.info("RSRQ: " + signal["rsrq"])
-            logging.info("RSRP: " + signal["rsrp"])
-            logging.info("RSSI: " + signal["rssi"])
-            logging.info("SINR: " + signal["sinr"])
+            logging.info("RSRQ: %4s RSRP: %4s RSSI: %4s SINR: %4s LAC: %4s",
+                         signal["rsrq"],
+                         signal["rsrp"],
+                         signal["rssi"],
+                         signal["sinr"],
+                         signal["cell_id"])
         time.sleep(1)
 
 
@@ -46,5 +52,9 @@ if __name__ == '__main__':
     level = logging.INFO
     if args.debug:
         level = logging.DEBUG
-    logging.basicConfig(level=level)
-    main(args)
+    logging.basicConfig(level=level,
+                        format='%(asctime)-15s: %(message)s')
+    try:
+        main(args)
+    except KeyboardInterrupt:
+        pass

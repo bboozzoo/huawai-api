@@ -47,7 +47,8 @@ if __name__ == "__main__":
 
     logging.getLogger().setLevel(getattr(logging, args.loglevel))
     log = logging.getLogger("lteband")
-    api = HuaweiAPI(host=args.ip, user=args.user, passwd=args.password)
+    api = HuaweiAPI(host=args.ip)
+    api.login(args.user, args.password)
     # Check whether the BAND is supported by the modem
     band_list = api.net_mode_list()
     log.info("The Modem supports the following LTE bands: " +

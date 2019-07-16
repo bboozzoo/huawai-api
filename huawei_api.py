@@ -26,26 +26,33 @@ class HuaweiAPI:
     HOME_URL = "http://{host}/html/home.html"
     API_URL = "http://{host}/api/"
 
-    def __init__(self, passwd, host="192.168.8.1", user="admin"):
+    def __init__(self, host="192.168.8.1"):
         self.log = logging.getLogger("huawei-api")
         self.api_url = self.API_URL.format(host=host)
+        self.host = host
         self.session = requests.Session()
-        self.log.debug("Connect to {host}".format(host=host))
+
+    def ping(self):
+        """ping the router
+
+        NOTE: weird interaction based on session cookies, specifically, the
+        router sets SessionID_R3 cookie
+        """
+        self.log.debug("Connect to {host}".format(host=self.host))
         try:
-            self.session.get(self.HOME_URL.format(host=host),
+            self.session.get(self.HOME_URL.format(host=self.host),
                              timeout=(5.0, 5.0))
         except Exception as e:
             raise HuaweiAPIException("Connection failed: " + str(e))
-        dev_info = self.device_info()
-        if dev_info:
-            self.log.info("Detected Device: " + dev_info['devicename'])
+
+    def login(self, user, passwd):
         self.log.debug("Authenticate for user " + user)
         self.__login(user, passwd)
 
     def __get_client_proof(self, clientnonce, servernonce,
                            password, salt, iterations):
         msg = "%s,%s,%s" % (clientnonce, servernonce, servernonce)
-        salted_pass = hashlib.pbkdf2_hmac('sha256', password,
+        salted_pass = hashlib.pbkdf2_hmac('sha256', password.encode('utf-8'),
                                           bytearray.fromhex(salt), iterations)
         client_key = hmac.new(b'Client Key', msg=salted_pass,
                               digestmod=hashlib.sha256)
@@ -58,10 +65,10 @@ class HuaweiAPI:
         client_proof = bytearray()
         i = 0
         while i < client_key.digest_size:
-            val = ord(client_key_digest[i]) ^ ord(signature_digest[i])
+            val = client_key_digest[i] ^ signature_digest[i]
             client_proof.append(val)
             i = i + 1
-        return hexlify(client_proof)
+        return hexlify(client_proof).decode('utf-8')
 
     def __login(self, user, password):
         d = OrderedDict()
@@ -94,6 +101,8 @@ class HuaweiAPI:
         if r.status_code != 200:
             raise HuaweiAPIException("Error getting token .HTTP error: %d" %
                                      r.status_code)
+        self.log.debug("Request: " + api_method_url +
+                       "\nResponse:\n" + r.content.decode('utf-8'))
         return xmltodict.parse(r.text)['response']['TokInfo']
 
     def __api_request(self, api_method_url, session=True):
@@ -109,7 +118,7 @@ class HuaweiAPI:
             raise HuaweiAPIException("Request returned HTTP error %d" %
                                      r.status_code)
         self.log.debug("Request: " + api_method_url +
-                       "\nResponse:\n" + r.content)
+                       "\nResponse:\n" + r.content.decode('utf-8'))
         resp = xmltodict.parse(r.text).get('error', None)
         if resp is not None:
             error_code = resp['code']
@@ -135,7 +144,7 @@ class HuaweiAPI:
             raise HuaweiAPIException("Request returned HTTP error %d" %
                                      r.status_code)
         self.log.debug("Request: " + api_method_url +
-                       "\nResponse:\n" + r.content)
+                       "\nResponse:\n" + r.content.decode('utf-8'))
         resp = xmltodict.parse(r.text).get('error', None)
         if resp is not None:
             error_code = resp['code']
